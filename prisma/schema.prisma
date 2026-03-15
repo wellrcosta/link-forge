@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(USER)
+  planId       String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  plan          Plan          @relation(fields: [planId], references: [id])
+  links         Link[]
+  refreshTokens RefreshToken[]
+  overrides     UserOverride?
+
+  @@map("users")
+}
+
+model Plan {
+  id                   String  @id @default(uuid())
+  name                 String  @unique
+  maxLinks             Int
+  maxTotalClicks       BigInt
+  maxClicksPerLink     BigInt
+  createLinkRateLimit  Int
+  redirectRateLimit    Int
+  isDefault            Boolean @default(false)
+
+  users User[]
+
+  @@map("plans")
+}
+
+model UserOverride {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  customMaxLinks            Int?
+  customMaxTotalClicks      BigInt?
+  customMaxClicksPerLink    BigInt?
+  customCreateLinkRateLimit Int?
+  customRedirectRateLimit   Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_overrides")
+}
+
+model Link {
+  id          String    @id @default(uuid())
+  userId      String
+  slug        String    @unique
+  originalUrl String
+  isActive    Boolean   @default(true)
+  disabledAt  DateTime?
+  expiresAt   DateTime?
+  clickCount  BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clickEvents ClickEvent[]
+
+  @@map("links")
+}
+
+model ClickEvent {
+  id         String   @id @default(uuid())
+  linkId     String
+  clickedAt  DateTime @default(now())
+  referer    String?
+  userAgent  String?
+  ipHash     String?
+  country    String?
+  city       String?
+  browser    String?
+  os         String?
+  deviceType String?
+
+  link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId])
+  @@index([clickedAt])
+  @@map("click_events")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
