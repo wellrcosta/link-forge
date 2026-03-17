@@ -3,7 +3,8 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../database/prisma.service';
 import { PlansService } from '../plans/plans.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { User } from '@prisma/client';
+
+type UserRecord = NonNullable<Awaited<ReturnType<PrismaService['user']['findUnique']>>>;
 
 @Injectable()
 export class UsersService {
@@ -12,7 +13,7 @@ export class UsersService {
     private readonly plansService: PlansService,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto): Promise<UserRecord> {
     const existing = await this.prisma.user.findUnique({
       where: { email: createUserDto.email },
     });
@@ -33,11 +34,11 @@ export class UsersService {
     });
   }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string): Promise<UserRecord | null> {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: string): Promise<UserRecord | null> {
     return this.prisma.user.findUnique({ where: { email } });
   }
 
@@ -51,7 +52,7 @@ export class UsersService {
     });
   }
 
-  async findByIdOrThrow(id: string): Promise<User> {
+  async findByIdOrThrow(id: string): Promise<UserRecord> {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('User not found');
     return user;

@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  ForbiddenException,
   BadRequestException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -10,9 +9,9 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateLinkDto } from './dto/create-link.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { generateSlug, isUrlSafe } from './slug.util';
-import { Link } from '@prisma/client';
 
-type LinkWithShortUrl = Link & { shortUrl: string };
+type LinkRecord = NonNullable<Awaited<ReturnType<PrismaService['link']['findUnique']>>>;
+type LinkWithShortUrl = LinkRecord & { shortUrl: string };
 
 @Injectable()
 export class LinksService {
@@ -122,7 +121,7 @@ export class LinksService {
     await this.prisma.link.delete({ where: { id } });
   }
 
-  async findBySlug(slug: string): Promise<Link | null> {
+  async findBySlug(slug: string): Promise<LinkRecord | null> {
     return this.prisma.link.findUnique({ where: { slug } });
   }
 
@@ -137,7 +136,7 @@ export class LinksService {
     return this.generateUniqueSlug(attempts + 1);
   }
 
-  private withShortUrl(link: Link): LinkWithShortUrl {
+  private withShortUrl(link: LinkRecord): LinkWithShortUrl {
     const baseUrl = (process.env.APP_BASE_URL || `http://localhost:${process.env.PORT || 3000}`)
       .trim()
       .replace(/\/+$/, '');

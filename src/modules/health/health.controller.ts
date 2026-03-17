@@ -2,8 +2,9 @@ import { Controller, Get } from '@nestjs/common';
 import {
   HealthCheck,
   HealthCheckService,
-  PrismaHealthIndicator,
   HealthCheckResult,
+  HealthCheckError,
+  HealthIndicatorResult,
 } from '@nestjs/terminus';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../database/prisma.service';
@@ -14,7 +15,6 @@ import { RedisHealthIndicator } from './redis-health.indicator';
 export class HealthController {
   constructor(
     private health: HealthCheckService,
-    private prismaHealth: PrismaHealthIndicator,
     private redisHealth: RedisHealthIndicator,
     private prisma: PrismaService,
   ) {}
@@ -24,8 +24,20 @@ export class HealthController {
   @ApiOperation({ summary: 'Check system health' })
   check(): Promise<HealthCheckResult> {
     return this.health.check([
-      () => this.prismaHealth.pingCheck('database', this.prisma),
+      () => this.databaseHealthCheck(),
       () => this.redisHealth.isHealthy('redis'),
     ]);
+  }
+
+  private async databaseHealthCheck(): Promise<HealthIndicatorResult> {
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      return { database: { status: 'up' } };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown database error';
+      throw new HealthCheckError('Database health check failed', {
+        database: { status: 'down', message },
+      });
+    }
   }
 }
