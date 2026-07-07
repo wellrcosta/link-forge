@@ -32,25 +32,6 @@ services:
       - linkforge-network
     restart: unless-stopped
 
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: node dist/worker
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://linkforge:linkforge@postgres:5432/linkforge?schema=public
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - linkforge-network
-    restart: unless-stopped
-
   postgres:
     image: postgres:15-alpine
     environment:
